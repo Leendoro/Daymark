@@ -1,83 +1,92 @@
+
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Daymark.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d"
+        d:DesignWidth="800"
+        d:DesignHeight="450"
         x:Class="Daymark.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="Daymark">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <!-- Previewer DataContext only.
+             Runtime DataContext is configured in App.axaml.cs. -->
         <vm:MainViewModel />
     </Design.DataContext>
 
     <Grid>
 
-    <!-- HOME SCREEN -->
-    <StackPanel
-        IsVisible="{Binding !IsWritingEntry}"
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        Spacing="15">
-
-        <TextBlock
-            Text="DAYMARK"
-            FontSize="36"
-            FontWeight="Bold"
-            HorizontalAlignment="Center" />
-
-        <TextBlock
-            Text="Your journal starts here."
-            FontSize="18"
-            HorizontalAlignment="Center" />
-
-        <Button
-            Content="New Entry"
-            Command="{Binding NewEntryCommand}"
-            HorizontalAlignment="Center" />
-
-    </StackPanel>
-
-
-    <!-- JOURNAL EDITOR -->
-    <StackPanel
-        IsVisible="{Binding IsWritingEntry}"
-        Margin="50"
-        Spacing="15">
-
-        <TextBlock
-            Text="New Journal Entry"
-            FontSize="30"
-            FontWeight="Bold" />
-
-        <TextBox
-    PlaceholderText="Entry title..." />
-
-        <TextBox
-    PlaceholderText="Start writing..."
-    AcceptsReturn="True"
-    TextWrapping="Wrap"
-    Height="250" />
-
+        <!-- HOME SCREEN -->
         <StackPanel
-            Orientation="Horizontal"
-            Spacing="10">
+            IsVisible="{Binding !IsWritingEntry}"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="15">
+
+            <TextBlock
+                Text="DAYMARK"
+                FontSize="36"
+                FontWeight="Bold"
+                HorizontalAlignment="Center" />
+
+            <TextBlock
+                Text="Your journal starts here."
+                FontSize="18"
+                HorizontalAlignment="Center" />
 
             <Button
-                Content="Back"
-                Command="{Binding GoHomeCommand}" />
-
-            <Button
-                Content="Save Entry" />
+                Content="New Entry"
+                Command="{Binding NewEntryCommand}"
+                HorizontalAlignment="Center" />
 
         </StackPanel>
 
-    </StackPanel>
 
-</Grid>
+        <!-- JOURNAL EDITOR -->
+        <StackPanel
+            IsVisible="{Binding IsWritingEntry}"
+            Margin="50"
+            Spacing="15">
+
+            <TextBlock
+                Text="New Journal Entry"
+                FontSize="30"
+                FontWeight="Bold" />
+
+            <!-- Journal title -->
+            <TextBox
+                Text="{Binding EntryTitle, Mode=TwoWay}"
+                PlaceholderText="Entry title..." />
+
+            <!-- Journal content -->
+            <TextBox
+                Text="{Binding EntryContent, Mode=TwoWay}"
+                PlaceholderText="Start writing..."
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                Height="250" />
+
+            <!-- Navigation and saving -->
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="10">
+
+                <Button
+                    Content="Back"
+                    Command="{Binding GoHomeCommand}" />
+
+                <Button
+                    Content="Save Entry"
+                    Command="{Binding SaveEntryCommand}" />
+
+            </StackPanel>
+
+        </StackPanel>
+
+    </Grid>
 
 </Window>

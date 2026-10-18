@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CommunityToolkit.Mvvm.Input;
 using Daymark.Models;
 using Daymark.Services;
+using System.Collections.ObjectModel;
 
 namespace Daymark.ViewModels;
 
@@ -12,11 +13,17 @@ public partial class MainViewModel : ViewModelBase
     private readonly JournalStorageService _storageService = new();
 
     private List<JournalEntry> _entries;
+    public ObservableCollection<JournalEntry> JournalEntries { get; } = new();
 
     public MainViewModel()
+{
+    _entries = _storageService.LoadEntries();
+
+    foreach (JournalEntry entry in _entries)
     {
-        _entries = _storageService.LoadEntries();
+        JournalEntries.Add(entry);
     }
+}
 
     private bool _isWritingEntry = false;
 
@@ -25,6 +32,16 @@ public partial class MainViewModel : ViewModelBase
         get => _isWritingEntry;
         set => SetProperty(ref _isWritingEntry, value);
     }
+
+    private bool _isViewingLibrary = false;
+
+    public bool IsViewingLibrary
+    {
+        get => _isViewingLibrary;
+        set => SetProperty(ref _isViewingLibrary, value);
+    }
+
+    public bool IsHomeVisible => !IsWritingEntry && !IsViewingLibrary;
 
     private string _entryTitle = "";
 
@@ -47,13 +64,25 @@ public partial class MainViewModel : ViewModelBase
     {
         EntryTitle = "";
         EntryContent = "";
+        IsViewingLibrary = false;
         IsWritingEntry = true;
+        OnPropertyChanged(nameof(IsHomeVisible));
+    }
+
+    [RelayCommand]
+    private void OpenLibrary()
+    {
+        IsWritingEntry = false;
+        IsViewingLibrary = true;
+        OnPropertyChanged(nameof(IsHomeVisible));
     }
 
     [RelayCommand]
     private void GoHome()
     {
         IsWritingEntry = false;
+        IsViewingLibrary = false;
+        OnPropertyChanged(nameof(IsHomeVisible));
     }
 
     [RelayCommand]
@@ -74,8 +103,9 @@ public partial class MainViewModel : ViewModelBase
         };
 
         _entries.Add(entry);
+        JournalEntries.Add(entry);
         _storageService.SaveEntries(_entries);
 
-        IsWritingEntry = false;
+        GoHome();
     }
 }

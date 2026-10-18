@@ -2,6 +2,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Daymark.ViewModels"
+        xmlns:models="using:Daymark.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -13,8 +14,7 @@
         Title="Daymark">
 
     <Design.DataContext>
-        <!-- Previewer DataContext only.
-             Runtime DataContext is configured in App.axaml.cs. -->
+        <!-- Used for the IDE previewer -->
         <vm:MainViewModel />
     </Design.DataContext>
 
@@ -22,7 +22,7 @@
 
         <!-- HOME SCREEN -->
         <StackPanel
-            IsVisible="{Binding !IsWritingEntry}"
+            IsVisible="{Binding IsHomeVisible}"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Spacing="15">
@@ -41,6 +41,11 @@
             <Button
                 Content="New Entry"
                 Command="{Binding NewEntryCommand}"
+                HorizontalAlignment="Center" />
+
+            <Button
+                Content="My Library"
+                Command="{Binding OpenLibraryCommand}"
                 HorizontalAlignment="Center" />
 
         </StackPanel>
@@ -84,6 +89,61 @@
                     Command="{Binding SaveEntryCommand}" />
 
             </StackPanel>
+
+        </StackPanel>
+
+
+        <!-- JOURNAL LIBRARY -->
+        <StackPanel
+            IsVisible="{Binding IsViewingLibrary}"
+            Margin="50"
+            Spacing="15">
+
+            <TextBlock
+                Text="My Library"
+                FontSize="30"
+                FontWeight="Bold" />
+
+            <TextBlock
+                Text="Your saved journal entries:"
+                FontSize="16" />
+
+            <!-- Displays entries loaded from journals.json -->
+            <ListBox
+                ItemsSource="{Binding JournalEntries}"
+                Height="350">
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:JournalEntry">
+
+                        <StackPanel
+                            Margin="10"
+                            Spacing="5">
+
+                            <!-- Journal title -->
+                            <TextBlock
+                                Text="{Binding Title}"
+                                FontSize="20"
+                                FontWeight="Bold" />
+
+                            <!-- Journal creation date -->
+                            <TextBlock
+                                Text="{Binding CreatedAt}"
+                                FontSize="12"
+                                Opacity="0.7" />
+
+                        </StackPanel>
+
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+
+            </ListBox>
+
+            <!-- Return to home screen -->
+            <Button
+                Content="Back to Home"
+                Command="{Binding GoHomeCommand}"
+                HorizontalAlignment="Left" />
 
         </StackPanel>
 

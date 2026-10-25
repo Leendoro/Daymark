@@ -76,24 +76,25 @@
                 TextWrapping="Wrap"
                 Height="250" />
 
-            <!-- EDITOR BUTTONS -->
+            <!-- NORMAL EDITOR BUTTONS -->
             <StackPanel
                 Orientation="Horizontal"
-                Spacing="10">
+                Spacing="10"
+                IsVisible="{Binding IsNotConfirmingDelete}">
 
-                <!-- Back when creating a new entry -->
+                <!-- Back when creating -->
                 <Button
                     Content="Back"
                     Command="{Binding GoHomeCommand}"
                     IsVisible="{Binding IsCreatingEntry}" />
 
-                <!-- Save a new entry -->
+                <!-- Save new entry -->
                 <Button
                     Content="Save Entry"
                     Command="{Binding SaveEntryCommand}"
                     IsVisible="{Binding IsCreatingEntry}" />
 
-                <!-- Return to library for existing entries -->
+                <!-- Return to library -->
                 <Button
                     Content="Back to Library"
                     Command="{Binding BackToLibraryCommand}"
@@ -116,6 +117,46 @@
                     Content="Cancel Editing"
                     Command="{Binding CancelEditingCommand}"
                     IsVisible="{Binding IsEditingEntry}" />
+
+                <!-- Delete existing entry (reading mode only) -->
+                <Button
+                    Content="Delete Entry"
+                    Command="{Binding DeleteEntryCommand}"
+                    IsVisible="{Binding IsReadingEntry}" />
+
+            </StackPanel>
+
+
+            <!-- DELETE CONFIRMATION -->
+            <StackPanel
+                IsVisible="{Binding IsConfirmingDelete}"
+                Spacing="12"
+                Margin="0,15,0,0">
+
+                <TextBlock
+                    Text="Are you sure you want to delete this journal entry?"
+                    FontSize="18"
+                    FontWeight="Bold"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    Text="This action cannot be undone."
+                    FontSize="14"
+                    Opacity="0.7" />
+
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="10">
+
+                    <Button
+                        Content="Yes, Delete Entry"
+                        Command="{Binding ConfirmDeleteCommand}" />
+
+                    <Button
+                        Content="Cancel"
+                        Command="{Binding CancelDeleteCommand}" />
+
+                </StackPanel>
 
             </StackPanel>
 

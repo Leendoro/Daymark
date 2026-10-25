@@ -104,7 +104,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // CURRENTLY OPEN JOURNAL
-    // This is separate from the ListBox selection.
+    // Separate from the ListBox selection to avoid our old bug.
 
     private JournalEntry? _currentEntry;
 
@@ -161,11 +161,30 @@ public partial class MainViewModel : ViewModelBase
         _ => "New Journal Entry"
     };
 
+    // DELETE CONFIRMATION STATE
+
+    private bool _isConfirmingDelete = false;
+
+    public bool IsConfirmingDelete
+    {
+        get => _isConfirmingDelete;
+        set
+        {
+            if (SetProperty(ref _isConfirmingDelete, value))
+            {
+                OnPropertyChanged(nameof(IsNotConfirmingDelete));
+            }
+        }
+    }
+
+    public bool IsNotConfirmingDelete => !IsConfirmingDelete;
+
     // CREATE A NEW JOURNAL
 
     [RelayCommand]
     private void NewEntry()
     {
+        IsConfirmingDelete = false;
         CurrentEntry = null;
         SelectedEntry = null;
 
@@ -183,7 +202,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void OpenLibrary()
     {
-        // Clear the selection and currently opened journal.
+        IsConfirmingDelete = false;
+
         SelectedEntry = null;
         CurrentEntry = null;
 
@@ -195,7 +215,8 @@ public partial class MainViewModel : ViewModelBase
 
     private void OpenEntry(JournalEntry entry)
     {
-        // Keep our own reference to the opened journal.
+        IsConfirmingDelete = false;
+
         CurrentEntry = entry;
 
         EntryTitle = entry.Title;
@@ -213,7 +234,8 @@ public partial class MainViewModel : ViewModelBase
     private void EditEntry()
     {
         if (CurrentEntry == null ||
-            EditorMode != JournalEditorMode.Reading)
+            EditorMode != JournalEditorMode.Reading ||
+            IsConfirmingDelete)
         {
             return;
         }
@@ -232,7 +254,6 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        // Restore the original saved values.
         EntryTitle = CurrentEntry.Title;
         EntryContent = CurrentEntry.Content;
 
@@ -256,20 +277,74 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        // Update the original journal object.
         CurrentEntry.Title = EntryTitle;
         CurrentEntry.Content = EntryContent;
         CurrentEntry.UpdatedAt = DateTime.Now;
 
-        // Save all journals to disk.
         _storageService.SaveEntries(_entries);
 
-        // IMPORTANT:
-        // Do not replace the item in JournalEntries.
-        // Doing so can interfere with ListBox selection.
+        // Do not replace JournalEntries items here.
+        // That caused our previous selection bug.
 
-        // Return to reading mode.
         EditorMode = JournalEditorMode.Reading;
+    }
+
+    // ASK FOR DELETE CONFIRMATION
+
+    [RelayCommand]
+    private void DeleteEntry()
+    {
+        if (CurrentEntry == null ||
+            EditorMode != JournalEditorMode.Reading)
+        {
+            return;
+        }
+
+        IsConfirmingDelete = true;
+    }
+
+    // CANCEL DELETION
+
+    [RelayCommand]
+    private void CancelDelete()
+    {
+        IsConfirmingDelete = false;
+    }
+
+    // CONFIRM AND DELETE THE JOURNAL
+
+    [RelayCommand]
+    private void ConfirmDelete()
+    {
+        if (CurrentEntry == null || !IsConfirmingDelete)
+        {
+            return;
+        }
+
+        JournalEntry entryToDelete = CurrentEntry;
+
+        // Remove from the saved journal list.
+        _entries.Remove(entryToDelete);
+
+        // Save the updated list to journals.json.
+        _storageService.SaveEntries(_entries);
+
+        // Clear the active journal before updating the UI.
+        IsConfirmingDelete = false;
+        CurrentEntry = null;
+        SelectedEntry = null;
+
+        // Refresh the library collection.
+        JournalEntries.Clear();
+
+        foreach (JournalEntry entry in _entries)
+        {
+            JournalEntries.Add(entry);
+        }
+
+        // Return to the library.
+        IsWritingEntry = false;
+        IsViewingLibrary = true;
     }
 
     // RETURN TO LIBRARY
@@ -277,7 +352,6 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void BackToLibrary()
     {
-        // Refresh the list when returning, not while editing.
         JournalEntries.Clear();
 
         foreach (JournalEntry entry in _entries)
@@ -293,6 +367,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void GoHome()
     {
+        IsConfirmingDelete = false;
+
         SelectedEntry = null;
         CurrentEntry = null;
 

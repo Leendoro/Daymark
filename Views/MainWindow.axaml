@@ -14,7 +14,6 @@
         Title="Daymark">
 
     <Design.DataContext>
-        <!-- Used for the IDE previewer -->
         <vm:MainViewModel />
     </Design.DataContext>
 
@@ -51,42 +50,72 @@
         </StackPanel>
 
 
-        <!-- JOURNAL EDITOR -->
+        <!-- JOURNAL EDITOR / READER -->
         <StackPanel
             IsVisible="{Binding IsWritingEntry}"
             Margin="50"
             Spacing="15">
 
             <TextBlock
-                Text="New Journal Entry"
+                Text="{Binding EditorHeading}"
                 FontSize="30"
                 FontWeight="Bold" />
 
             <!-- Journal title -->
             <TextBox
                 Text="{Binding EntryTitle, Mode=TwoWay}"
+                IsReadOnly="{Binding IsEditorReadOnly}"
                 PlaceholderText="Entry title..." />
 
             <!-- Journal content -->
             <TextBox
                 Text="{Binding EntryContent, Mode=TwoWay}"
+                IsReadOnly="{Binding IsEditorReadOnly}"
                 PlaceholderText="Start writing..."
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 Height="250" />
 
-            <!-- Navigation and saving -->
+            <!-- EDITOR BUTTONS -->
             <StackPanel
                 Orientation="Horizontal"
                 Spacing="10">
 
+                <!-- Back when creating a new entry -->
                 <Button
                     Content="Back"
-                    Command="{Binding GoHomeCommand}" />
+                    Command="{Binding GoHomeCommand}"
+                    IsVisible="{Binding IsCreatingEntry}" />
 
+                <!-- Save a new entry -->
                 <Button
                     Content="Save Entry"
-                    Command="{Binding SaveEntryCommand}" />
+                    Command="{Binding SaveEntryCommand}"
+                    IsVisible="{Binding IsCreatingEntry}" />
+
+                <!-- Return to library for existing entries -->
+                <Button
+                    Content="Back to Library"
+                    Command="{Binding BackToLibraryCommand}"
+                    IsVisible="{Binding IsExistingEntry}" />
+
+                <!-- Start editing -->
+                <Button
+                    Content="Edit Entry"
+                    Command="{Binding EditEntryCommand}"
+                    IsVisible="{Binding IsReadingEntry}" />
+
+                <!-- Save edits -->
+                <Button
+                    Content="Save Changes"
+                    Command="{Binding SaveChangesCommand}"
+                    IsVisible="{Binding IsEditingEntry}" />
+
+                <!-- Cancel editing -->
+                <Button
+                    Content="Cancel Editing"
+                    Command="{Binding CancelEditingCommand}"
+                    IsVisible="{Binding IsEditingEntry}" />
 
             </StackPanel>
 
@@ -108,9 +137,10 @@
                 Text="Your saved journal entries:"
                 FontSize="16" />
 
-            <!-- Displays entries loaded from journals.json -->
+            <!-- Saved journal list -->
             <ListBox
                 ItemsSource="{Binding JournalEntries}"
+                SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                 Height="350">
 
                 <ListBox.ItemTemplate>
@@ -120,13 +150,11 @@
                             Margin="10"
                             Spacing="5">
 
-                            <!-- Journal title -->
                             <TextBlock
                                 Text="{Binding Title}"
                                 FontSize="20"
                                 FontWeight="Bold" />
 
-                            <!-- Journal creation date -->
                             <TextBlock
                                 Text="{Binding CreatedAt}"
                                 FontSize="12"
@@ -139,7 +167,7 @@
 
             </ListBox>
 
-            <!-- Return to home screen -->
+            <!-- Return to home -->
             <Button
                 Content="Back to Home"
                 Command="{Binding GoHomeCommand}"

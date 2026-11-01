@@ -76,6 +76,17 @@
                 TextWrapping="Wrap"
                 Height="250" />
 
+
+            <!-- IMAGE INSERTION -->
+            <Button
+                Content="Add Image"
+                Click="AddImage_Click"
+                IsVisible="{Binding IsNotConfirmingDelete}"
+                HorizontalAlignment="Left" />
+
+
+            
+
             <!-- NORMAL EDITOR BUTTONS -->
             <StackPanel
                 Orientation="Horizontal"

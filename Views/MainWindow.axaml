@@ -49,87 +49,115 @@
 
         </StackPanel>
 
-
         <!-- JOURNAL EDITOR / READER -->
-        <StackPanel
+        <Grid
             IsVisible="{Binding IsWritingEntry}"
             Margin="50"
-            Spacing="15">
+            RowDefinitions="Auto,*,Auto,Auto"
+            RowSpacing="12">
 
             <TextBlock
+                Grid.Row="0"
                 Text="{Binding EditorHeading}"
                 FontSize="30"
                 FontWeight="Bold" />
 
-            <!-- Journal title -->
-            <TextBox
-                Text="{Binding EntryTitle, Mode=TwoWay}"
-                IsReadOnly="{Binding IsEditorReadOnly}"
-                PlaceholderText="Entry title..." />
+            <!-- SCROLLABLE JOURNAL CONTENT -->
+            <ScrollViewer
+                Grid.Row="1"
+                VerticalScrollBarVisibility="Auto">
 
-            <!-- Journal content -->
-            <TextBox
-                Text="{Binding EntryContent, Mode=TwoWay}"
-                IsReadOnly="{Binding IsEditorReadOnly}"
-                PlaceholderText="Start writing..."
-                AcceptsReturn="True"
-                TextWrapping="Wrap"
-                Height="250" />
+                <StackPanel Spacing="15">
 
+                    <!-- TITLE -->
+                    <TextBox
+                        Text="{Binding EntryTitle, Mode=TwoWay}"
+                        IsReadOnly="{Binding IsEditorReadOnly}"
+                        PlaceholderText="Entry title..." />
 
-            <!-- IMAGE INSERTION -->
+                    <!-- TEXT CONTENT -->
+                    <TextBox
+                        Text="{Binding EntryContent, Mode=TwoWay}"
+                        IsReadOnly="{Binding IsEditorReadOnly}"
+                        PlaceholderText="Start writing..."
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        MinHeight="200" />
+
+                    <!-- IMAGE PREVIEWS -->
+                    <ItemsControl
+                        ItemsSource="{Binding JournalImages}">
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border
+                                    Margin="0,5,0,10"
+                                    Padding="8"
+                                    BorderBrush="Gray"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+
+                                    <Image
+                                        Source="{Binding}"
+                                        MaxWidth="650"
+                                        MaxHeight="400"
+                                        Stretch="Uniform"
+                                        HorizontalAlignment="Left" />
+
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+
+                    </ItemsControl>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ADD IMAGE -->
             <Button
+                Grid.Row="2"
                 Content="Add Image"
                 Click="AddImage_Click"
-                IsVisible="{Binding IsNotConfirmingDelete}"
+                IsVisible="{Binding CanAddImage}"
                 HorizontalAlignment="Left" />
-
-
-            
 
             <!-- NORMAL EDITOR BUTTONS -->
             <StackPanel
+                Grid.Row="3"
                 Orientation="Horizontal"
                 Spacing="10"
                 IsVisible="{Binding IsNotConfirmingDelete}">
 
-                <!-- Back when creating -->
                 <Button
                     Content="Back"
                     Command="{Binding GoHomeCommand}"
                     IsVisible="{Binding IsCreatingEntry}" />
 
-                <!-- Save new entry -->
                 <Button
                     Content="Save Entry"
                     Command="{Binding SaveEntryCommand}"
                     IsVisible="{Binding IsCreatingEntry}" />
 
-                <!-- Return to library -->
                 <Button
                     Content="Back to Library"
                     Command="{Binding BackToLibraryCommand}"
                     IsVisible="{Binding IsExistingEntry}" />
 
-                <!-- Start editing -->
                 <Button
                     Content="Edit Entry"
                     Command="{Binding EditEntryCommand}"
                     IsVisible="{Binding IsReadingEntry}" />
 
-                <!-- Save edits -->
                 <Button
                     Content="Save Changes"
                     Command="{Binding SaveChangesCommand}"
                     IsVisible="{Binding IsEditingEntry}" />
 
-                <!-- Cancel editing -->
                 <Button
                     Content="Cancel Editing"
                     Command="{Binding CancelEditingCommand}"
                     IsVisible="{Binding IsEditingEntry}" />
 
-                <!-- Delete existing entry (reading mode only) -->
                 <Button
                     Content="Delete Entry"
                     Command="{Binding DeleteEntryCommand}"
@@ -137,12 +165,11 @@
 
             </StackPanel>
 
-
             <!-- DELETE CONFIRMATION -->
             <StackPanel
+                Grid.Row="3"
                 IsVisible="{Binding IsConfirmingDelete}"
-                Spacing="12"
-                Margin="0,15,0,0">
+                Spacing="12">
 
                 <TextBlock
                     Text="Are you sure you want to delete this journal entry?"
@@ -171,8 +198,7 @@
 
             </StackPanel>
 
-        </StackPanel>
-
+        </Grid>
 
         <!-- JOURNAL LIBRARY -->
         <StackPanel
@@ -189,7 +215,6 @@
                 Text="Your saved journal entries:"
                 FontSize="16" />
 
-            <!-- Saved journal list -->
             <ListBox
                 ItemsSource="{Binding JournalEntries}"
                 SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
@@ -219,7 +244,6 @@
 
             </ListBox>
 
-            <!-- Return to home -->
             <Button
                 Content="Back to Home"
                 Command="{Binding GoHomeCommand}"

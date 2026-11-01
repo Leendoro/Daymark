@@ -2,13 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.Input;
 using Daymark.Models;
 using Daymark.Services;
 
 namespace Daymark.ViewModels;
 
-// The editor can only be in one mode at a time.
 public enum JournalEditorMode
 {
     New,
@@ -19,10 +20,17 @@ public enum JournalEditorMode
 public partial class MainViewModel : ViewModelBase
 {
     private readonly JournalStorageService _storageService = new();
+    private readonly ImageStorageService _imageStorageService = new();
 
     private readonly List<JournalEntry> _entries;
 
     public ObservableCollection<JournalEntry> JournalEntries { get; } = new();
+
+    // Images currently displayed in the editor.
+    public ObservableCollection<Bitmap> JournalImages { get; } = new();
+
+    // Working copy of the current journal's blocks.
+    private readonly List<JournalBlock> _workingBlocks = new();
 
     public MainViewModel()
     {
@@ -36,7 +44,7 @@ public partial class MainViewModel : ViewModelBase
 
     // NAVIGATION
 
-    private bool _isWritingEntry = false;
+    private bool _isWritingEntry;
 
     public bool IsWritingEntry
     {
@@ -50,7 +58,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private bool _isViewingLibrary = false;
+    private bool _isViewingLibrary;
 
     public bool IsViewingLibrary
     {
@@ -64,7 +72,8 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public bool IsHomeVisible => !IsWritingEntry && !IsViewingLibrary;
+    public bool IsHomeVisible =>
+        !IsWritingEntry && !IsViewingLibrary;
 
     // JOURNAL TITLE AND CONTENT
 
@@ -104,7 +113,6 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // CURRENTLY OPEN JOURNAL
-    // Separate from the ListBox selection to avoid our old bug.
 
     private JournalEntry? _currentEntry;
 
@@ -138,6 +146,7 @@ public partial class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsEditingEntry));
                 OnPropertyChanged(nameof(IsEditorReadOnly));
                 OnPropertyChanged(nameof(EditorHeading));
+                OnPropertyChanged(nameof(CanAddImage));
             }
         }
     }
@@ -154,6 +163,9 @@ public partial class MainViewModel : ViewModelBase
     public bool IsEditorReadOnly =>
         EditorMode == JournalEditorMode.Reading;
 
+    public bool CanAddImage =>
+        IsCreatingEntry || IsEditingEntry;
+
     public string EditorHeading => EditorMode switch
     {
         JournalEditorMode.Reading => "Journal Entry",
@@ -161,9 +173,9 @@ public partial class MainViewModel : ViewModelBase
         _ => "New Journal Entry"
     };
 
-    // DELETE CONFIRMATION STATE
+    // DELETE CONFIRMATION
 
-    private bool _isConfirmingDelete = false;
+    private bool _isConfirmingDelete;
 
     public bool IsConfirmingDelete
     {
@@ -179,6 +191,104 @@ public partial class MainViewModel : ViewModelBase
 
     public bool IsNotConfirmingDelete => !IsConfirmingDelete;
 
+    // IMAGE HANDLING
+
+    private void ClearImagePreviews()
+    {
+        foreach (Bitmap image in JournalImages)
+        {
+            image.Dispose();
+        }
+
+        JournalImages.Clear();
+    }
+
+    private void LoadImagePreviews()
+    {
+        ClearImagePreviews();
+
+        foreach (JournalBlock block in _workingBlocks)
+        {
+            if (block.Type != JournalBlockType.Image ||
+                string.IsNullOrWhiteSpace(block.ImagePath) ||
+                !File.Exists(block.ImagePath))
+            {
+                continue;
+            }
+
+            try
+            {
+                JournalImages.Add(new Bitmap(block.ImagePath));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"Could not load image: {ex.Message}");
+            }
+        }
+    }
+
+    private void LoadWorkingBlocks(JournalEntry entry)
+    {
+        _workingBlocks.Clear();
+
+        if (entry.Blocks != null)
+        {
+            foreach (JournalBlock block in entry.Blocks)
+            {
+                _workingBlocks.Add(new JournalBlock
+                {
+                    Id = block.Id,
+                    Type = block.Type,
+                    Text = block.Text,
+                    ImagePath = block.ImagePath
+                });
+            }
+        }
+
+        LoadImagePreviews();
+    }
+
+    // Called by the window after selecting an image.
+    public void AddImageFromPath(string sourcePath)
+    {
+        if (!CanAddImage || IsConfirmingDelete)
+        {
+            return;
+        }
+
+        // ImportImage copies the file into Daymark's folder.
+        string savedPath = _imageStorageService.ImportImage(sourcePath);
+
+        JournalBlock imageBlock = new JournalBlock
+        {
+            Type = JournalBlockType.Image,
+            ImagePath = savedPath
+        };
+
+        _workingBlocks.Add(imageBlock);
+
+        LoadImagePreviews();
+    }
+
+    private List<JournalBlock> CopyWorkingBlocks()
+    {
+        var result = new List<JournalBlock>();
+
+        foreach (JournalBlock block in _workingBlocks)
+        {
+            result.Add(new JournalBlock
+            {
+                Id = block.Id,
+                Type = block.Type,
+                Text = block.Text,
+                ImagePath = block.ImagePath
+            });
+        }
+
+        return result;
+    }
+
     // CREATE A NEW JOURNAL
 
     [RelayCommand]
@@ -191,13 +301,16 @@ public partial class MainViewModel : ViewModelBase
         EntryTitle = "";
         EntryContent = "";
 
+        _workingBlocks.Clear();
+        ClearImagePreviews();
+
         EditorMode = JournalEditorMode.New;
 
         IsViewingLibrary = false;
         IsWritingEntry = true;
     }
 
-    // OPEN THE JOURNAL LIBRARY
+    // OPEN LIBRARY
 
     [RelayCommand]
     private void OpenLibrary()
@@ -207,11 +320,14 @@ public partial class MainViewModel : ViewModelBase
         SelectedEntry = null;
         CurrentEntry = null;
 
+        _workingBlocks.Clear();
+        ClearImagePreviews();
+
         IsWritingEntry = false;
         IsViewingLibrary = true;
     }
 
-    // OPEN A SAVED JOURNAL
+    // OPEN SAVED JOURNAL
 
     private void OpenEntry(JournalEntry entry)
     {
@@ -222,13 +338,15 @@ public partial class MainViewModel : ViewModelBase
         EntryTitle = entry.Title;
         EntryContent = entry.Content;
 
+        LoadWorkingBlocks(entry);
+
         EditorMode = JournalEditorMode.Reading;
 
         IsViewingLibrary = false;
         IsWritingEntry = true;
     }
 
-    // START EDITING
+    // EDIT EXISTING JOURNAL
 
     [RelayCommand]
     private void EditEntry()
@@ -257,10 +375,12 @@ public partial class MainViewModel : ViewModelBase
         EntryTitle = CurrentEntry.Title;
         EntryContent = CurrentEntry.Content;
 
+        LoadWorkingBlocks(CurrentEntry);
+
         EditorMode = JournalEditorMode.Reading;
     }
 
-    // SAVE CHANGES TO AN EXISTING JOURNAL
+    // SAVE EXISTING JOURNAL
 
     [RelayCommand]
     private void SaveChanges()
@@ -272,24 +392,24 @@ public partial class MainViewModel : ViewModelBase
         }
 
         if (string.IsNullOrWhiteSpace(EntryTitle) &&
-            string.IsNullOrWhiteSpace(EntryContent))
+            string.IsNullOrWhiteSpace(EntryContent) &&
+            _workingBlocks.Count == 0)
         {
             return;
         }
 
         CurrentEntry.Title = EntryTitle;
         CurrentEntry.Content = EntryContent;
+        CurrentEntry.Blocks = CopyWorkingBlocks();
         CurrentEntry.UpdatedAt = DateTime.Now;
 
         _storageService.SaveEntries(_entries);
 
-        // Do not replace JournalEntries items here.
-        // That caused our previous selection bug.
-
+        // Do not replace JournalEntries items.
         EditorMode = JournalEditorMode.Reading;
     }
 
-    // ASK FOR DELETE CONFIRMATION
+    // DELETE CONFIRMATION
 
     [RelayCommand]
     private void DeleteEntry()
@@ -303,15 +423,11 @@ public partial class MainViewModel : ViewModelBase
         IsConfirmingDelete = true;
     }
 
-    // CANCEL DELETION
-
     [RelayCommand]
     private void CancelDelete()
     {
         IsConfirmingDelete = false;
     }
-
-    // CONFIRM AND DELETE THE JOURNAL
 
     [RelayCommand]
     private void ConfirmDelete()
@@ -323,34 +439,25 @@ public partial class MainViewModel : ViewModelBase
 
         JournalEntry entryToDelete = CurrentEntry;
 
-        // Remove from the saved journal list.
         _entries.Remove(entryToDelete);
-
-        // Save the updated list to journals.json.
         _storageService.SaveEntries(_entries);
 
-        // Clear the active journal before updating the UI.
         IsConfirmingDelete = false;
         CurrentEntry = null;
         SelectedEntry = null;
 
-        // Refresh the library collection.
-        JournalEntries.Clear();
+        _workingBlocks.Clear();
+        ClearImagePreviews();
 
-        foreach (JournalEntry entry in _entries)
-        {
-            JournalEntries.Add(entry);
-        }
+        RefreshLibrary();
 
-        // Return to the library.
         IsWritingEntry = false;
         IsViewingLibrary = true;
     }
 
-    // RETURN TO LIBRARY
+    // LIBRARY REFRESH
 
-    [RelayCommand]
-    private void BackToLibrary()
+    private void RefreshLibrary()
     {
         JournalEntries.Clear();
 
@@ -358,7 +465,15 @@ public partial class MainViewModel : ViewModelBase
         {
             JournalEntries.Add(entry);
         }
+    }
 
+    [RelayCommand]
+    private void BackToLibrary()
+    {
+        // Clear selection before refreshing.
+        SelectedEntry = null;
+
+        RefreshLibrary();
         OpenLibrary();
     }
 
@@ -372,11 +487,14 @@ public partial class MainViewModel : ViewModelBase
         SelectedEntry = null;
         CurrentEntry = null;
 
+        _workingBlocks.Clear();
+        ClearImagePreviews();
+
         IsWritingEntry = false;
         IsViewingLibrary = false;
     }
 
-    // SAVE A BRAND-NEW JOURNAL
+    // SAVE NEW JOURNAL
 
     [RelayCommand]
     private void SaveEntry()
@@ -387,7 +505,8 @@ public partial class MainViewModel : ViewModelBase
         }
 
         if (string.IsNullOrWhiteSpace(EntryTitle) &&
-            string.IsNullOrWhiteSpace(EntryContent))
+            string.IsNullOrWhiteSpace(EntryContent) &&
+            _workingBlocks.Count == 0)
         {
             return;
         }
@@ -396,6 +515,7 @@ public partial class MainViewModel : ViewModelBase
         {
             Title = EntryTitle,
             Content = EntryContent,
+            Blocks = CopyWorkingBlocks(),
             CreatedAt = DateTime.Now,
             UpdatedAt = DateTime.Now
         };

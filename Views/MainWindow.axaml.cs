@@ -1,10 +1,10 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using Daymark.ViewModels;
 
 namespace Daymark.Views;
 
@@ -15,17 +15,11 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
+    // Opens the file picker when Add Image is clicked.
     private async void AddImage_Click(
         object? sender,
         RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel ||
-            !viewModel.CanAddImage ||
-            viewModel.IsConfirmingDelete)
-        {
-            return;
-        }
-
         var files = await StorageProvider.OpenFilePickerAsync(
             new FilePickerOpenOptions
             {
@@ -53,26 +47,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        string? filePath = selectedFile.TryGetLocalPath();
+        // For now, confirm that we selected a file.
+        Console.WriteLine(
+            $"Selected image: {selectedFile.Name}");
 
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            Console.WriteLine(
-                "This file does not have a local path.");
-            return;
-        }
-
-        try
-        {
-            viewModel.AddImageFromPath(filePath);
-
-            Console.WriteLine(
-                $"Image imported: {selectedFile.Name}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(
-                $"Could not import image: {ex.Message}");
-        }
+        // Next, we'll pass the selected image
+        // to our journal editor.
     }
 }

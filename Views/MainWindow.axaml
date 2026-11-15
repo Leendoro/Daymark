@@ -69,13 +69,14 @@
 
                 <StackPanel Spacing="15">
 
-                    <!-- TITLE -->
+                    <!-- JOURNAL TITLE -->
                     <TextBox
                         Text="{Binding EntryTitle, Mode=TwoWay}"
                         IsReadOnly="{Binding IsEditorReadOnly}"
                         PlaceholderText="Entry title..." />
 
-                    <!-- TEXT CONTENT -->
+                    <!-- ORIGINAL TEXT CONTENT -->
+                    <!-- Preserved for older journal compatibility. -->
                     <TextBox
                         Text="{Binding EntryContent, Mode=TwoWay}"
                         IsReadOnly="{Binding IsEditorReadOnly}"
@@ -84,27 +85,47 @@
                         TextWrapping="Wrap"
                         MinHeight="200" />
 
-                    <!-- IMAGE PREVIEWS -->
+                    <!-- UNIFIED TEXT AND IMAGE BLOCKS -->
+                    <!-- Both block types are displayed in insertion order. -->
                     <ItemsControl
-                        ItemsSource="{Binding JournalImages}">
+                        ItemsSource="{Binding EditorBlocks}">
 
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border
-                                    Margin="0,5,0,10"
-                                    Padding="8"
-                                    BorderBrush="Gray"
-                                    BorderThickness="1"
-                                    CornerRadius="6">
+                            <DataTemplate x:DataType="vm:JournalBlockViewModel">
 
-                                    <Image
-                                        Source="{Binding}"
-                                        MaxWidth="650"
-                                        MaxHeight="400"
-                                        Stretch="Uniform"
-                                        HorizontalAlignment="Left" />
+                                <StackPanel
+                                    Spacing="10"
+                                    Margin="0,5,0,10">
 
-                                </Border>
+                                    <!-- TEXT BLOCK -->
+                                    <TextBox
+                                        IsVisible="{Binding IsText}"
+                                        Text="{Binding Text, Mode=TwoWay}"
+                                        IsReadOnly="{Binding IsReadOnly}"
+                                        AcceptsReturn="True"
+                                        TextWrapping="Wrap"
+                                        MinHeight="100"
+                                        PlaceholderText="Continue writing..." />
+
+                                    <!-- IMAGE BLOCK -->
+                                    <Border
+                                        IsVisible="{Binding IsImage}"
+                                        Padding="8"
+                                        BorderBrush="Gray"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+
+                                        <Image
+                                            Source="{Binding ImagePreview}"
+                                            MaxWidth="650"
+                                            MaxHeight="400"
+                                            Stretch="Uniform"
+                                            HorizontalAlignment="Left" />
+
+                                    </Border>
+
+                                </StackPanel>
+
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
 
@@ -113,13 +134,22 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ADD IMAGE -->
-            <Button
+            <!-- ADD CONTENT BUTTONS -->
+            <StackPanel
                 Grid.Row="2"
-                Content="Add Image"
-                Click="AddImage_Click"
-                IsVisible="{Binding CanAddImage}"
-                HorizontalAlignment="Left" />
+                Orientation="Horizontal"
+                Spacing="10"
+                IsVisible="{Binding CanAddImage}">
+
+                <Button
+                    Content="+ Add Text"
+                    Command="{Binding AddTextBlockCommand}" />
+
+                <Button
+                    Content="+ Add Image"
+                    Click="AddImage_Click" />
+
+            </StackPanel>
 
             <!-- NORMAL EDITOR BUTTONS -->
             <StackPanel

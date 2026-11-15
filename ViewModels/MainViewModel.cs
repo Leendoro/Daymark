@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
-using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.Input;
 using Daymark.Models;
 using Daymark.Services;
@@ -26,10 +24,10 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<JournalEntry> JournalEntries { get; } = new();
 
-    // Images currently displayed in the editor.
-    public ObservableCollection<Bitmap> JournalImages { get; } = new();
+    // One ordered collection containing BOTH text and image blocks.
+    public ObservableCollection<JournalBlockViewModel> EditorBlocks { get; } = new();
 
-    // Working copy of the current journal's blocks.
+    // Working copies of blocks, separate from saved journal entries.
     private readonly List<JournalBlock> _workingBlocks = new();
 
     public MainViewModel()
@@ -75,7 +73,7 @@ public partial class MainViewModel : ViewModelBase
     public bool IsHomeVisible =>
         !IsWritingEntry && !IsViewingLibrary;
 
-    // JOURNAL TITLE AND CONTENT
+    // JOURNAL TITLE AND ORIGINAL CONTENT
 
     private string _entryTitle = "";
 
@@ -85,6 +83,7 @@ public partial class MainViewModel : ViewModelBase
         set => SetProperty(ref _entryTitle, value);
     }
 
+    // Retained for compatibility with older journals.
     private string _entryContent = "";
 
     public string EntryContent
@@ -147,6 +146,8 @@ public partial class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsEditorReadOnly));
                 OnPropertyChanged(nameof(EditorHeading));
                 OnPropertyChanged(nameof(CanAddImage));
+
+                UpdateBlockReadOnlyState();
             }
         }
     }
@@ -163,6 +164,7 @@ public partial class MainViewModel : ViewModelBase
     public bool IsEditorReadOnly =>
         EditorMode == JournalEditorMode.Reading;
 
+    // Kept with the existing name for MainWindow.axaml.
     public bool CanAddImage =>
         IsCreatingEntry || IsEditingEntry;
 
@@ -191,65 +193,70 @@ public partial class MainViewModel : ViewModelBase
 
     public bool IsNotConfirmingDelete => !IsConfirmingDelete;
 
-    // IMAGE HANDLING
+    // UNIFIED BLOCK HANDLING
 
-    private void ClearImagePreviews()
+    // Dispose image previews before clearing the collection.
+    private void ClearEditorBlocks()
     {
-        foreach (Bitmap image in JournalImages)
+        foreach (JournalBlockViewModel block in EditorBlocks)
         {
-            image.Dispose();
+            block.Dispose();
         }
 
-        JournalImages.Clear();
+        EditorBlocks.Clear();
     }
 
-    private void LoadImagePreviews()
+    private void ClearWorkingBlocks()
     {
-        ClearImagePreviews();
+        ClearEditorBlocks();
+        _workingBlocks.Clear();
+    }
 
-        foreach (JournalBlock block in _workingBlocks)
+    private void UpdateBlockReadOnlyState()
+    {
+        foreach (JournalBlockViewModel block in EditorBlocks)
         {
-            if (block.Type != JournalBlockType.Image ||
-                string.IsNullOrWhiteSpace(block.ImagePath) ||
-                !File.Exists(block.ImagePath))
-            {
-                continue;
-            }
-
-            try
-            {
-                JournalImages.Add(new Bitmap(block.ImagePath));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(
-                    $"Could not load image: {ex.Message}");
-            }
+            block.IsReadOnly = IsEditorReadOnly;
         }
     }
 
+    private static JournalBlock CopyBlock(JournalBlock block)
+    {
+        return new JournalBlock
+        {
+            Id = block.Id,
+            Type = block.Type,
+            Text = block.Text,
+            ImagePath = block.ImagePath
+        };
+    }
+
+    // Load both text and images in their original saved order.
     private void LoadWorkingBlocks(JournalEntry entry)
     {
-        _workingBlocks.Clear();
+        ClearWorkingBlocks();
 
-        if (entry.Blocks != null)
+        if (entry.Blocks == null)
         {
-            foreach (JournalBlock block in entry.Blocks)
-            {
-                _workingBlocks.Add(new JournalBlock
-                {
-                    Id = block.Id,
-                    Type = block.Type,
-                    Text = block.Text,
-                    ImagePath = block.ImagePath
-                });
-            }
+            return;
         }
 
-        LoadImagePreviews();
+        foreach (JournalBlock savedBlock in entry.Blocks)
+        {
+            JournalBlock copy = CopyBlock(savedBlock);
+
+            _workingBlocks.Add(copy);
+
+            EditorBlocks.Add(
+                new JournalBlockViewModel(
+                    copy,
+                    IsEditorReadOnly
+                )
+            );
+        }
     }
 
-    // Called by the window after selecting an image.
+    // Called by MainWindow after the user selects an image.
     public void AddImageFromPath(string sourcePath)
     {
         if (!CanAddImage || IsConfirmingDelete)
@@ -257,7 +264,7 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        // ImportImage copies the file into Daymark's folder.
+        // Copy the selected image into Daymark's managed folder.
         string savedPath = _imageStorageService.ImportImage(sourcePath);
 
         JournalBlock imageBlock = new JournalBlock
@@ -266,24 +273,47 @@ public partial class MainViewModel : ViewModelBase
             ImagePath = savedPath
         };
 
+        // Both collections receive the image at the same position.
         _workingBlocks.Add(imageBlock);
 
-        LoadImagePreviews();
+        EditorBlocks.Add(
+            new JournalBlockViewModel(imageBlock)
+        );
     }
 
+    // ADD TEXT BLOCK
+
+    [RelayCommand]
+    private void AddTextBlock()
+    {
+        if (!CanAddImage || IsConfirmingDelete)
+        {
+            return;
+        }
+
+        JournalBlock textBlock = new JournalBlock
+        {
+            Type = JournalBlockType.Text,
+            Text = ""
+        };
+
+        _workingBlocks.Add(textBlock);
+
+        EditorBlocks.Add(
+            new JournalBlockViewModel(textBlock)
+        );
+    }
+
+    // Copy the current block content for saving.
     private List<JournalBlock> CopyWorkingBlocks()
     {
         var result = new List<JournalBlock>();
 
+        // Text changes are already synchronized with each Model
+        // by JournalBlockViewModel.Text.
         foreach (JournalBlock block in _workingBlocks)
         {
-            result.Add(new JournalBlock
-            {
-                Id = block.Id,
-                Type = block.Type,
-                Text = block.Text,
-                ImagePath = block.ImagePath
-            });
+            result.Add(CopyBlock(block));
         }
 
         return result;
@@ -301,8 +331,7 @@ public partial class MainViewModel : ViewModelBase
         EntryTitle = "";
         EntryContent = "";
 
-        _workingBlocks.Clear();
-        ClearImagePreviews();
+        ClearWorkingBlocks();
 
         EditorMode = JournalEditorMode.New;
 
@@ -320,8 +349,7 @@ public partial class MainViewModel : ViewModelBase
         SelectedEntry = null;
         CurrentEntry = null;
 
-        _workingBlocks.Clear();
-        ClearImagePreviews();
+        ClearWorkingBlocks();
 
         IsWritingEntry = false;
         IsViewingLibrary = true;
@@ -338,9 +366,10 @@ public partial class MainViewModel : ViewModelBase
         EntryTitle = entry.Title;
         EntryContent = entry.Content;
 
-        LoadWorkingBlocks(entry);
-
+        // Set reading mode before loading the block controls.
         EditorMode = JournalEditorMode.Reading;
+
+        LoadWorkingBlocks(entry);
 
         IsViewingLibrary = false;
         IsWritingEntry = true;
@@ -372,12 +401,13 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // Restore saved values instead of keeping unsaved edits.
         EntryTitle = CurrentEntry.Title;
         EntryContent = CurrentEntry.Content;
 
-        LoadWorkingBlocks(CurrentEntry);
-
         EditorMode = JournalEditorMode.Reading;
+
+        LoadWorkingBlocks(CurrentEntry);
     }
 
     // SAVE EXISTING JOURNAL
@@ -405,7 +435,7 @@ public partial class MainViewModel : ViewModelBase
 
         _storageService.SaveEntries(_entries);
 
-        // Do not replace JournalEntries items.
+        // Preserve CurrentEntry and do not replace the library item.
         EditorMode = JournalEditorMode.Reading;
     }
 
@@ -446,8 +476,7 @@ public partial class MainViewModel : ViewModelBase
         CurrentEntry = null;
         SelectedEntry = null;
 
-        _workingBlocks.Clear();
-        ClearImagePreviews();
+        ClearWorkingBlocks();
 
         RefreshLibrary();
 
@@ -470,7 +499,6 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void BackToLibrary()
     {
-        // Clear selection before refreshing.
         SelectedEntry = null;
 
         RefreshLibrary();
@@ -487,8 +515,7 @@ public partial class MainViewModel : ViewModelBase
         SelectedEntry = null;
         CurrentEntry = null;
 
-        _workingBlocks.Clear();
-        ClearImagePreviews();
+        ClearWorkingBlocks();
 
         IsWritingEntry = false;
         IsViewingLibrary = false;

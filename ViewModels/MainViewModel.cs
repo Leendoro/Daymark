@@ -70,10 +70,54 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public bool IsHomeVisible =>
-        !IsWritingEntry && !IsViewingLibrary;
+   // AUTHENTICATION SCREEN STATE
 
-    // JOURNAL TITLE AND ORIGINAL CONTENT
+private bool _isAuthenticated = false;
+
+public bool IsAuthenticated
+{
+    get => _isAuthenticated;
+    private set
+    {
+        if (SetProperty(ref _isAuthenticated, value))
+        {
+            OnPropertyChanged(nameof(IsLoginVisible));
+            OnPropertyChanged(nameof(IsHomeVisible));
+        }
+    }
+}
+
+public bool IsLoginVisible => !IsAuthenticated;
+
+public bool IsHomeVisible =>
+    IsAuthenticated && !IsWritingEntry && !IsViewingLibrary;
+
+
+// LOGIN AND REGISTRATION FIELDS
+
+private string _authEmail = "";
+
+public string AuthEmail
+{
+    get => _authEmail;
+    set => SetProperty(ref _authEmail, value);
+}
+
+private string _authPassword = "";
+
+public string AuthPassword
+{
+    get => _authPassword;
+    set => SetProperty(ref _authPassword, value);
+}
+
+private string _authMessage = "";
+
+public string AuthMessage
+{
+    get => _authMessage;
+    set => SetProperty(ref _authMessage, value);
+}
 
     private string _entryTitle = "";
 

@@ -18,6 +18,62 @@
     </Design.DataContext>
 
     <Grid>
+    <!-- LOGIN AND REGISTRATION SCREEN -->
+<StackPanel
+    IsVisible="{Binding IsLoginVisible}"
+    HorizontalAlignment="Center"
+    VerticalAlignment="Center"
+    Width="350"
+    Spacing="15">
+
+    <TextBlock
+        Text="DAYMARK"
+        FontSize="36"
+        FontWeight="Bold"
+        HorizontalAlignment="Center" />
+
+    <TextBlock
+        Text="Your personal journal, wherever you go."
+        FontSize="16"
+        TextWrapping="Wrap"
+        HorizontalAlignment="Center" />
+
+    <TextBlock
+        Text="Email Address"
+        FontSize="14" />
+
+    <TextBox
+        Text="{Binding AuthEmail, Mode=TwoWay}"
+        PlaceholderText="Enter your email..." />
+
+    <TextBlock
+        Text="Password"
+        FontSize="14" />
+
+    <TextBox
+        Text="{Binding AuthPassword, Mode=TwoWay}"
+        PasswordChar="*"
+        PlaceholderText="Enter your password..." />
+
+    <StackPanel
+        Orientation="Horizontal"
+        HorizontalAlignment="Center"
+        Spacing="10">
+
+        <Button
+            Content="Sign In" />
+
+        <Button
+            Content="Create Account" />
+
+    </StackPanel>
+
+    <TextBlock
+        Text="{Binding AuthMessage}"
+        TextWrapping="Wrap"
+        HorizontalAlignment="Center" />
+
+</StackPanel>
 
         <!-- HOME SCREEN -->
         <StackPanel

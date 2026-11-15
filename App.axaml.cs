@@ -1,6 +1,9 @@
+
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Daymark.Services;
 using Daymark.ViewModels;
 using Daymark.Views;
 
@@ -21,8 +24,36 @@ public partial class App : Application
             {
                 DataContext = new MainViewModel(),
             };
+
+            // Test the Supabase connection without blocking the UI.
+            _ = TestSupabaseConnectionAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static async System.Threading.Tasks.Task TestSupabaseConnectionAsync()
+    {
+        try
+        {
+            var supabase = new SupabaseService(
+                SupabaseConfig.ProjectUrl,
+                SupabaseConfig.PublishableKey
+            );
+
+            bool connected = await supabase.TestConnectionAsync();
+
+            Console.WriteLine(
+                connected
+                    ? "Daymark: Supabase initialization succeeded!"
+                    : "Daymark: Supabase initialization failed."
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Daymark: Supabase error: {ex.Message}"
+            );
+        }
     }
 }
